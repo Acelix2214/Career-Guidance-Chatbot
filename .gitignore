@@ -1,0 +1,11 @@
+# Python environment and caches
+.venv/
+__pycache__/
+*.pyc
+.ipynb_checkpoints/
+# downloaded at runtime
+nltk_data/
+# local logs and tooling
+*.log
+.claude/
+.planning/

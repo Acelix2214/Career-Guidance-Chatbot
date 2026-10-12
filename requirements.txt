@@ -1,0 +1,20 @@
+# Core NLP / ML
+datasets==5.1.0
+pandas==3.0.6
+numpy==2.5.4
+scikit-learn==1.9.1
+nltk==3.10.3
+joblib==1.6.0
+sentence-transformers==6.1.0
+# CPU-only build is enough (smaller download):
+#   pip install torch==2.14.1 --index-url https://download.pytorch.org/whl/cpu
+torch==2.14.1
+
+# Charts (notebook)
+matplotlib==3.11.2
+seaborn==0.13.2
+
+# Notebook + web app
+jupyter==1.1.1
+ipykernel==7.4.0
+streamlit==1.65.0
