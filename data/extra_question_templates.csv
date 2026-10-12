@@ -1,0 +1,51 @@
+intent,template
+role_overview,Give me an overview of the {role} position.
+role_overview,Explain the {role} role to me.
+role_overview,What kind of work does a {role} handle?
+role_overview,Can you explain what a {role} is responsible for?
+role_overview,What is the purpose of a {role} in a company?
+skills,What abilities are most valuable for a {role}?
+skills,What should I be good at to work as a {role}?
+skills,What technical and soft skills help a {role} succeed?
+skills,What knowledge is needed for a {role}?
+skills,What strengths make a good {role}?
+tools_technologies,What tools and platforms does a {role} work with?
+tools_technologies,What applications and systems does a {role} rely on?
+tools_technologies,What tech stack is common for a {role}?
+tools_technologies,What digital tools help a {role} get things done?
+tools_technologies,What platforms and utilities are part of a {role}'s toolkit?
+career_growth,What are the promotion opportunities for a {role}?
+career_growth,Where can a {role} go next in their career?
+career_growth,How does a {role} advance to senior positions?
+career_growth,What is the long-term outlook for a {role}'s career?
+career_growth,What roles can a {role} move into later?
+education,What subjects are useful for a future {role}?
+education,Which degree or certifications help a {role}?
+education,What academic background does a {role} need?
+education,Are certifications useful for a {role}?
+education,What training do I need to be a {role}?
+daily_tasks,What does a {role} spend most of their time on?
+daily_tasks,How does a normal shift go for a {role}?
+daily_tasks,What fills up the schedule of a {role}?
+daily_tasks,What routine work does a {role} handle?
+daily_tasks,Describe a day in the life of a {role}.
+salary,What is a {role} paid?
+salary,What compensation does a {role} receive?
+salary,What does a {role} make per year?
+salary,Is being a {role} well paid?
+salary,What income can a {role} expect?
+work_environment,What industries employ a {role}?
+work_environment,Where would a {role} usually be based?
+work_environment,Do {roles} work in offices or remotely?
+work_environment,What type of organizations need a {role}?
+work_environment,What is the workplace like for a {role}?
+challenges,What are the toughest parts of a {role}'s job?
+challenges,What are the downsides of being a {role}?
+challenges,What obstacles do {roles} deal with?
+challenges,Is there a lot of pressure in the {role} job?
+challenges,What makes the work of a {role} difficult?
+getting_started,How do I get into a {role} career?
+getting_started,What is the first step to becoming a {role}?
+getting_started,How should a beginner break into the {role} field?
+getting_started,What is the best way to land a first job as a {role}?
+getting_started,What is the easiest route into a {role} job for a newcomer?
