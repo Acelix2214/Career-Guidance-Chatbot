@@ -1,0 +1,31 @@
+dialog_id,turn,query,expected_kind,expected_role,expected_intent
+D01,1,What does a Data Scientist do?,answer,Data Scientist,role_overview
+D01,2,how much do they earn?,answer,Data Scientist,salary
+D01,3,and what tools do they use?,answer,Data Scientist,tools_technologies
+D02,1,Tell me about being a Web Developer,answer,Web Developer,role_overview
+D02,2,what about the salary?,answer,Web Developer,salary
+D03,1,How do I become a QA Engineer?,answer,QA Engineer,getting_started
+D03,2,what skills do I need?,answer,QA Engineer,skills
+D03,3,what are the biggest challenges?,answer,QA Engineer,challenges
+D04,1,What is the salary of a Game Developer?,answer,Game Developer,salary
+D04,2,what about a Mobile App Developer?,answer,Mobile App Developer,salary
+D05,1,What does a UX Researcher do?,answer,UX Researcher,role_overview
+D05,2,what is the weather today?,fallback,,
+D05,3,do they need a degree?,answer,UX Researcher,education
+D06,1,What does an SEO Specialist do?,answer,SEO Specialist,role_overview
+D06,2,how much does a pilot earn?,no_answer,,
+D07,1,what skills does a Business Analyst need?,answer,Business Analyst,skills
+D07,2,where do they work?,answer,Business Analyst,work_environment
+D08,1,how much can I earn?,clarify_role,,salary
+D08,2,as a Cloud Database Engineer,answer,Cloud Database Engineer,salary
+D09,1,What does a Legal Assistant do?,answer,Legal Assistant,role_overview
+D09,2,how do I start in this career?,answer,Legal Assistant,getting_started
+D09,3,what does a Media Buyer do?,answer,Media Buyer,role_overview
+D09,4,and their salary?,answer,Media Buyer,salary
+D10,1,What does a Robotics Engineer do on a daily basis?,answer,Robotics Engineer,daily_tasks
+D10,2,what qualifications are required?,answer,Robotics Engineer,education
+D11,1,what tools does a Data Analyst use?,answer,Data Analyst,tools_technologies
+D11,2,tell me a joke,fallback,,
+D11,3,how do they grow in their career?,answer,Data Analyst,career_growth
+D12,1,How much does a Product Owner earn?,answer,Product Owner (Entry-level),salary
+D12,2,what problems do they face?,answer,Product Owner (Entry-level),challenges

@@ -1,0 +1,63 @@
+id,category,query,expected_kind,expected_role,expected_intent
+R01,informal,how much money do data scientists make,answer,Data Scientist,salary
+R02,informal,what should i study to become a web developer,answer,Web Developer,education
+R03,informal,is being a game developer hard,answer,Game Developer,challenges
+R04,informal,which tools do qa engineers use,answer,QA Engineer,tools_technologies
+R05,informal,what does a ux researcher do all day,answer,UX Researcher,daily_tasks
+R06,informal,career progression for business analysts,answer,Business Analyst,career_growth
+R07,informal,where do robotics engineers usually work,answer,Robotics Engineer,work_environment
+R08,informal,how can i get my first job as a travel coordinator,answer,Travel Coordinator,getting_started
+R09,informal,tell me what a content strategist does,answer,Content Strategist,role_overview
+R10,informal,whats the pay like for a legal assistant,answer,Legal Assistant,salary
+R11,informal,what skills do i need to be a media buyer,answer,Media Buyer,skills
+R12,informal,do claims adjusters need a college degree,answer,Claims Adjuster,education
+A01,abbreviation,ml engineer salary,answer,Machine Learning Engineer,salary
+A02,abbreviation,what is an sre,answer,Site Reliability Engineer (SRE),role_overview
+A03,abbreviation,what does a scrum master do,answer,Scrum Master (Junior level),role_overview
+A04,abbreviation,skills needed for a swe,answer,Software Engineer,skills
+A05,abbreviation,what tools does a bi analyst use,answer,Business Intelligence Analyst,tools_technologies
+A06,abbreviation,how do i become a sysadmin,answer,Systems Administrator,getting_started
+A07,abbreviation,what does a ux ui designer do,answer,UX/UI Designer,role_overview
+A08,abbreviation,how much does a csr manager earn,answer,Corporate Social Responsibility (CSR) Manager (Entry-level),salary
+A09,abbreviation,what software does a mobile dev use,answer,Mobile App Developer,tools_technologies
+A10,abbreviation,challenges of being a web dev,answer,Web Developer,challenges
+T01,typo,what skils does a data scienist need,answer,Data Scientist,skills
+T02,typo,how much do softwre enginers earn,answer,Software Engineer,salary
+T03,typo,what does a machne learning enginer do,answer,Machine Learning Engineer,role_overview
+T04,typo,qualifcations for a buisness analyst,answer,Business Analyst,education
+T05,typo,daily taks of a game develper,answer,Game Developer,daily_tasks
+T06,typo,wich tools do data analysts use,answer,Data Analyst,tools_technologies
+T07,typo,how to start a carrer as a seo specialist,answer,SEO Specialist,getting_started
+T08,typo,what is the salry of a procurment manager,answer,Procurement Manager (Junior level),salary
+T09,typo,wrok environment for a cloud database enginer,answer,Cloud Database Engineer,work_environment
+T10,typo,biggest chalenges for a product owner,answer,Product Owner (Entry-level),challenges
+O01,overlap,what programming languages should a game developer know,answer,Game Developer,skills
+O02,overlap,what technologies does an automation engineer work with,answer,Automation Engineer,tools_technologies
+O03,overlap,what education does an ai researcher need,answer,AI Researcher,education
+O04,overlap,what do i need to get hired as an entry level data analyst,answer,Data Analyst,getting_started
+O05,overlap,what kind of company would hire a salesforce administrator,answer,Salesforce Administrator,work_environment
+O06,overlap,what problems do ux ui designers deal with,answer,UX/UI Designer,challenges
+F01,role_free,how much can i earn,clarify_role,,salary
+F02,role_free,what skills should i learn,clarify_role,,skills
+F03,role_free,what is a typical workday like,clarify_role,,daily_tasks
+F04,role_free,do i need a degree for this job,clarify_role,,education
+F05,role_free,what are the challenges in this career,clarify_role,,challenges
+F06,role_free,how do i grow in my career,clarify_role,,career_growth
+U01,unknown_role,how much does a pilot earn,no_answer,,
+U02,unknown_role,what does a nurse do,no_answer,,
+U03,unknown_role,how do i become a chef,no_answer,,
+U04,unknown_role,what skills does a firefighter need,no_answer,,
+U05,unknown_role,what do pilots do every day,no_answer,,
+U06,unknown_role,is being a dentist stressful,no_answer,,
+X01,off_topic,how do i write a good resume,no_answer,,
+X02,off_topic,how should i prepare for a job interview,no_answer,,
+X03,off_topic,what is the best university in the world,no_answer,,
+X04,off_topic,is it stressful to study in college,no_answer,,
+X05,off_topic,i am a student,no_answer,,
+X06,off_topic,3 pm,no_answer,,
+X07,off_topic,html,no_answer,,
+X08,off_topic,what is the capital of japan,no_answer,,
+X09,off_topic,can you recommend a good restaurant,no_answer,,
+X10,off_topic,how do i fix my wifi,no_answer,,
+X11,off_topic,who invented the telephone,no_answer,,
+X12,off_topic,good morning,no_answer,,
