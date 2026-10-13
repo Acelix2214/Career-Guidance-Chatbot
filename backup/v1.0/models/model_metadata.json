@@ -1,0 +1,37 @@
+{
+  "sklearn_version": "1.9.1",
+  "dataset": "Pradeep016/career-guidance-qa-dataset",
+  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "intent_features": "embedding",
+  "augment_with_answers": false,
+  "kb_size": 1620,
+  "n_roles": 54,
+  "role_C": 10.0,
+  "intent_C": 100.0,
+  "ngram_range": [
+    1,
+    2
+  ],
+  "thresholds": {
+    "min_similarity": 0.441,
+    "min_role_conf": 0.276,
+    "min_intent_conf": 0.319
+  },
+  "test_metrics": {
+    "role_accuracy": 1.0,
+    "intent_accuracy": 0.7148148148148148,
+    "intent_macro_f1": 0.6460327490466369,
+    "hybrid_hit_at_1": 0.7148148148148148,
+    "coverage": 0.987037037037037,
+    "accuracy_of_answered": 0.7204502814258912
+  },
+  "cv_mean": {
+    "role accuracy": 1.0,
+    "intent accuracy": 0.8290123456790123,
+    "intent macro-F1": 0.7949505058699285,
+    "hybrid Hit@1": 0.8290123456790123,
+    "TF-IDF retrieval Hit@1": 0.38271604938271603,
+    "MiniLM retrieval Hit@1": 0.7944444444444444
+  },
+  "preprocessing": "TextPreprocessor(remove_stopwords=True, stem=False)"
+}

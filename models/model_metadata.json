@@ -1,7 +1,8 @@
 {
   "sklearn_version": "1.9.1",
   "dataset": "Pradeep016/career-guidance-qa-dataset",
-  "embedding_model": "sentence-transformers/all-MiniLM-L6-v2",
+  "embedding_model": "intfloat/e5-small-v2",
+  "encoder_prompt": "query: ",
   "intent_features": "embedding",
   "augment_with_answers": false,
   "kb_size": 1620,
@@ -12,26 +13,84 @@
     1,
     2
   ],
+  "use_normalizer": true,
+  "gate_on_raw": false,
+  "extra_training_questions": 2700,
   "thresholds": {
-    "min_similarity": 0.441,
-    "min_role_conf": 0.276,
-    "min_intent_conf": 0.319
+    "min_similarity": 0.864,
+    "min_role_conf": 0.312,
+    "min_intent_conf": 0.603,
+    "max_ambiguity_margin": 0.6,
+    "min_meta_similarity": 0.883,
+    "min_meta_margin": 0.02
   },
   "test_metrics": {
     "role_accuracy": 1.0,
-    "intent_accuracy": 0.7148148148148148,
-    "intent_macro_f1": 0.6460327490466369,
-    "hybrid_hit_at_1": 0.7148148148148148,
-    "coverage": 0.987037037037037,
-    "accuracy_of_answered": 0.7204502814258912
+    "intent_accuracy": 0.8833333333333333,
+    "intent_macro_f1": 0.8566903684550743,
+    "hybrid_hit_at_1": 0.8833333333333333,
+    "top2_accuracy": 0.9111111111111111,
+    "coverage": 0.8944444444444445,
+    "accuracy_of_answered": 0.9523809523809523
   },
   "cv_mean": {
     "role accuracy": 1.0,
-    "intent accuracy": 0.8290123456790123,
-    "intent macro-F1": 0.7949505058699285,
-    "hybrid Hit@1": 0.8290123456790123,
+    "intent accuracy": 0.8820987654320988,
+    "intent macro-F1": 0.8615004699589187,
+    "hybrid Hit@1": 0.8820987654320988,
     "TF-IDF retrieval Hit@1": 0.38271604938271603,
-    "MiniLM retrieval Hit@1": 0.7944444444444444
+    "e5-small-v2 retrieval Hit@1": 0.8604938271604938
   },
-  "preprocessing": "TextPreprocessor(remove_stopwords=True, stem=False)"
+  "realistic_accuracy": {
+    "informal": 1.0,
+    "abbreviation": 0.8,
+    "typo": 0.9,
+    "overlap": 1.0,
+    "role_free": 0.6666666666666666,
+    "unknown_role": 1.0,
+    "off_topic": 1.0,
+    "ALL (64 questions)": 0.9193548387096774
+  },
+  "dialogue": {
+    "turn accuracy": 0.8333333333333334,
+    "follow-up turn accuracy": 0.7777777777777778,
+    "dialogue task success": 0.5833333333333334
+  },
+  "performance": {
+    "median_ms": 23.227649995533284,
+    "p95_ms": 39.29000000061933,
+    "cold start import_s": 2.3,
+    "cold start load_s": 0.02,
+    "cold start warmup_s": 7.28,
+    "cold start total_s": 9.6,
+    "model file MB": 5.139011
+  },
+  "v1_comparison": {
+    "v1.0": {
+      "intent accuracy (held-out test)": 0.7148148148148148,
+      "intent macro-F1 (held-out test)": 0.6460327490466369,
+      "hybrid Hit@1 (3-fold CV mean)": 0.8290123456790123,
+      "realistic questions handled correctly": 0.8064516129032258,
+      "dialogue task success": 0.08333333333333333,
+      "warm reply median (ms)": 10.130250004294794,
+      "cold start (s)": 11.489999999999998
+    },
+    "v1.1": {
+      "intent accuracy (held-out test)": 0.8833333333333333,
+      "intent macro-F1 (held-out test)": 0.8566903684550743,
+      "hybrid Hit@1 (3-fold CV mean)": 0.8820987654320988,
+      "realistic questions handled correctly": 0.9193548387096774,
+      "dialogue task success": 0.5833333333333334,
+      "warm reply median (ms)": 23.227649995533284,
+      "cold start (s)": 9.6
+    }
+  },
+  "encoder_label": "e5-small-v2",
+  "preprocessing": "TextPreprocessor(remove_stopwords=True, stem=False, lemmatize=False)",
+  "eval_set_sha256": {
+    "realistic_queries.csv": "6aa51fddda344a1156b2787d718d99bb77be01a245302c91fd7ae1c4952a7c5b",
+    "conversations.csv": "fde1014b15dd504b9fc070ae1aea5b63efd5e60c890917dda6cd11913093a259"
+  },
+  "extra_wordings_used": true,
+  "extra_wordings_val_macro_f1_change": 0.11080072517387385
 }
