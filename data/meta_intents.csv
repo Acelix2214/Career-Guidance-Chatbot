@@ -1,0 +1,65 @@
+intent,example
+greeting,hi
+greeting,hello
+greeting,hey
+greeting,hello there
+greeting,hi there
+greeting,hey there
+greeting,good afternoon
+greeting,good evening
+greeting,greetings
+greeting,hi bot
+greeting,hey how are you
+greeting,hello how are you doing
+thanks,thanks
+thanks,thank you
+thanks,thanks a lot
+thanks,thank you so much
+thanks,that helps thank you
+thanks,great thanks
+thanks,ok thanks
+thanks,i appreciate it
+thanks,cheers
+thanks,thanks for the help
+help,what can you do
+help,how can you help me
+help,what do you know
+help,what can i ask you
+help,help
+help,what topics do you cover
+help,which careers do you know about
+help,how does this work
+help,what are you
+help,who are you
+recommend,what is the best job for me
+recommend,which career suits me
+recommend,what career should i choose
+recommend,recommend me a career
+recommend,i don't know what job to pick
+recommend,what job fits my personality
+recommend,i like coding and math which career is good for me
+recommend,i enjoy drawing and design what job should i do
+recommend,i love talking to people what career suits me
+recommend,i am good at numbers what job can i do
+recommend,suggest a career for someone who likes writing
+recommend,what job is right for me
+list_careers,list all careers
+list_careers,what jobs do you know
+list_careers,list jobs for computer science
+list_careers,what careers are there in marketing
+list_careers,show me careers in data
+list_careers,which jobs are related to engineering
+list_careers,what jobs can i get with a business degree
+list_careers,careers in it
+list_careers,list careers for people who like design
+list_careers,what are the jobs in finance
+list_careers,give me all the careers you cover
+list_careers,what kinds of jobs are available
+greeting,helo
+greeting,heloo
+greeting,hii
+greeting,hellow
+greeting,hai
+thanks,thx
+thanks,ty
+thanks,thnx
