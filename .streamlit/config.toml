@@ -1,0 +1,22 @@
+# Look of the Streamlit app (app.py). Layout tweaks that the theme can't express are in app.py (STYLE).
+
+[client]
+toolbarMode = "viewer"  # hide the Deploy button and developer options; keeps the light/dark setting in the menu
+
+[theme]
+font = "Inter:https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap, sans-serif"
+baseRadius = "0.75rem"
+
+[theme.light]
+primaryColor = "#4f46e5"
+backgroundColor = "#ffffff"
+secondaryBackgroundColor = "#f5f5fa"
+textColor = "#1f2333"
+linkColor = "#4f46e5"
+
+[theme.dark]
+primaryColor = "#6366f1"
+backgroundColor = "#111218"
+secondaryBackgroundColor = "#1c1d26"
+textColor = "#e6e7ee"
+linkColor = "#a5b4fc"

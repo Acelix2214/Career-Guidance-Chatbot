@@ -2,6 +2,7 @@
 
 Run:  streamlit run app.py
 The model is trained and saved by career_guidance_chatbot.ipynb (models/career_chatbot.joblib).
+Colours and font are set in .streamlit/config.toml; STYLE below adds the chat layout.
 """
 import json
 import os
@@ -17,19 +18,40 @@ from chatbot_core import (INTENT_NAMES, INTENTS, MAX_QUERY_CHARS, METADATA_PATH,
 
 st.set_page_config(page_title="Career Guidance Chatbot", page_icon="🎓", layout="centered")
 
-EXAMPLES = [
-    "What skills does a Data Analyst need?",
-    "How much do Software Engineers earn?",
-    "How do I start a career as a UX Researcher?",
-    "ml engineer salary",
+DATASET_URL = "https://huggingface.co/datasets/Pradeep016/career-guidance-qa-dataset"
+AVATAR = ":material/school:"
+STARTERS = [  # cards on the empty chat screen
+    (":material/payments:", "How much do Software Engineers earn?"),
+    (":material/psychology:", "What skills does a Data Analyst need?"),
+    (":material/school:", "How do I start a career as a UX Researcher?"),
+    (":material/explore:", "What is the best job for me?"),
+]
+EXAMPLES = [  # sidebar demo questions, one per feature
+    (":material/short_text:", "ml engineer salary"),
+    (":material/spellcheck:", "what skils does a data scienist need"),
+    (":material/group:", "What is a Data Analyst, Data Scientist, Business Analyst?"),
+    (":material/help:", "What is the average salary?"),
+    (":material/list:", "list the jobs for computer science"),
+    (":material/block:", "tell me a joke"),
 ]
 META_LABELS = {"greeting": "greeting", "thanks": "thanks", "help": "help request",
                "recommend": "career recommendation", "list_careers": "career list"}
-KIND_LABELS = {"answer": "Answer", "meta": "Conversation", "clarify_role": "Needs clarification",
-               "clarify_intent": "Needs clarification", "fallback": "Fallback", "invalid": "Invalid input"}
+KIND_BADGES = {"clarify_role": ("Needs clarification", "orange"), "clarify_intent": ("Needs clarification", "orange"),
+               "fallback": ("Fallback", "gray")}
 THINKING_SECONDS = 1.0  # minimum time the indicator stays up; the model replies in well under that, so it would only flicker
-THINKING_HTML = """
+THINKING_HTML = '<div class="thinking"><span></span><span></span><span></span><em>Thinking…</em></div>'
+STYLE = """
 <style>
+/* Chat: the user's messages on the right in a tinted bubble, the assistant's on the left without a box */
+[data-testid="stChatMessage"] {background: transparent; padding: .35rem 0;}
+[data-testid="stChatMessage"]:has([aria-label="Chat message from user"]) {flex-direction: row-reverse;}
+[data-testid="stChatMessageAvatarUser"] {display: none;}
+[aria-label="Chat message from user"] {flex: 0 1 auto; width: auto; max-width: 85%; margin: 0 0 0 auto; padding: .6rem 1rem;
+    border-radius: 1.25rem 1.25rem .35rem 1.25rem; background: rgba(99, 102, 241, .13);}
+[data-testid="stChatMessageAvatarCustom"] {background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;}
+[data-testid="stChatInput"] {box-shadow: 0 4px 18px rgba(15, 23, 42, .08);}
+
+/* Thinking indicator */
 .thinking {display: flex; align-items: center; gap: .4rem; opacity: .75; padding: .3rem 0;}
 .thinking span {width: .5rem; height: .5rem; border-radius: 50%; background: currentColor;
                 animation: thinking-bounce 1.2s infinite ease-in-out;}
@@ -39,8 +61,21 @@ THINKING_HTML = """
 @keyframes thinking-bounce {0%, 60%, 100% {transform: translateY(0); opacity: .35;}
                             30% {transform: translateY(-.35rem); opacity: 1;}}
 @media (prefers-reduced-motion: reduce) {.thinking span {transform: none !important;}}
+
+/* Empty chat: greeting and starter cards */
+.st-key-welcome {padding-top: 7vh;}
+.hero-icon {width: 4rem; height: 4rem; margin: 0 auto; border-radius: 1.25rem; display: grid; place-items: center;
+            font-size: 2.1rem; background: linear-gradient(135deg, rgba(99, 102, 241, .2), rgba(139, 92, 246, .2));}
+.st-key-starters button {min-height: 5.5rem; padding: .85rem 1rem; align-items: flex-start; justify-content: flex-start;}
+.st-key-starters button > div {width: 100%; align-items: flex-start;}
+.st-key-starters button > div > span {width: 100%; flex-direction: column; align-items: flex-start; gap: .5rem;}
+.st-key-starters button p {text-align: left;}
+.st-key-starters button:hover {border-color: #6366f1; background: rgba(99, 102, 241, .06);}
+
+/* Follow-up chips and the sidebar question list */
+[class*="st-key-chips"] button {border-radius: 1rem; min-height: 0; padding: .3rem .85rem; text-align: left;}
+.st-key-examples button > div {justify-content: flex-start; text-align: left;}
 </style>
-<div class="thinking"><span></span><span></span><span></span><em>Thinking…</em></div>
 """
 
 
@@ -59,7 +94,7 @@ def load_metadata() -> dict:
 
 
 def ask(question: str) -> None:
-    """Queue a question (used by example, suggestion and 'Did you mean' buttons)."""
+    """Queue a question (used by starter, example, suggestion and 'Did you mean' buttons)."""
     st.session_state.pending = question
 
 
@@ -69,10 +104,11 @@ def clear() -> None:
 
 
 def show_memory(slot) -> None:
-    """The sidebar's "Remembered career" note, or nothing when no career is remembered."""
+    """The sidebar's remembered-career badge, or nothing when no career is remembered."""
     role = st.session_state.ctx.last_role
     if role:
-        slot.caption(f"Remembered career: {role}")
+        slot.badge(f"Remembering: {role}", icon=":material/bookmark:", color="violet",
+                   help="Follow-up questions such as \"how much do they earn?\" refer to this career.")
     else:
         slot.empty()
 
@@ -82,57 +118,73 @@ def show_text(text: str) -> None:
     st.markdown(text.replace("$", r"\$"))
 
 
+def render_welcome(n_roles: int) -> None:
+    """Empty-chat screen: a greeting and starter questions."""
+    with st.container(key="welcome"):
+        st.markdown('<div class="hero-icon">🎓</div>', unsafe_allow_html=True)
+        st.header("What career are you curious about?", anchor=False, text_alignment="center")
+        st.markdown(f"Ask about skills, salary, education, daily tasks, tools, challenges, work environment, career "
+                    f"growth or how to get started, for **{n_roles} careers**. Typos, abbreviations and follow-ups "
+                    "such as *\"how much do they earn?\"* are fine.", text_alignment="center")
+        with st.container(key="starters"):
+            cols = st.columns(2)
+            for k, (icon, q) in enumerate(STARTERS):
+                cols[k % 2].button(q, key=f"starter{k}", icon=icon, width="stretch", wrap=True, on_click=ask, args=(q,))
+
+
 def render_details(d: dict, index: int, latest: bool) -> None:
-    """Notes, confidence indicator, model internals and follow-up buttons for one bot reply."""
+    """Notes, confidence badge, model internals and follow-up buttons for one bot reply."""
     if d.get("corrections"):
-        st.caption("I read your question as: *" + d["normalized_query"] + "*")
+        st.caption(":material/spellcheck: I read your question as: *" + d["normalized_query"] + "*")
     if d.get("used_memory") == "role":
         who = ", ".join(d.get("roles") or []) or d["role"]
-        st.caption(f"Assuming you still mean **{who}** (from earlier in this conversation).")
+        st.caption(f":material/history: Assuming you still mean **{who}** (from earlier in this conversation).")
     elif d.get("used_memory") == "intent":
-        st.caption(f"Assuming you still want to know about **{INTENT_NAMES[d['intent']].lower()}**.")
-    if d["kind"] == "answer":
-        st.progress(min(max(d["confidence"], 0.0), 1.0),
-                    text=f"Confidence {d['confidence']:.0%} · similarity {d['similarity']:.2f}")
-    elif d["kind"] == "meta":
-        st.caption(f"Recognised as a {META_LABELS.get(d.get('meta_intent'), 'conversation')} "
-                   f"(similarity {d['similarity']:.2f}).")
-    elif d["kind"] != "invalid":
-        st.caption(f"{KIND_LABELS[d['kind']]} — the model was not confident enough to answer directly.")
-    if d["kind"] not in ("invalid", "meta"):
-        with st.expander("How the model decided"):
-            multi = len(d.get("roles") or []) > 1
-            if multi:
-                st.markdown(f"**Careers answered ({len(d['roles'])}):** " + ", ".join(d["roles"]) + "  \n"
-                            "*Each listed career was recognised separately by the role classifier.*")
-            st.markdown((f"**Predicted role:** {d['role']} ({d['role_conf']:.0%})  \n" if not multi else "") +
-                        f"**Predicted topic:** {INTENT_NAMES.get(d['intent'], d['intent'])} ({d['intent_conf']:.0%})  \n"
-                        f"**Best knowledge-base similarity:** {d['similarity']:.2f}")
-            if d.get("matched_question"):
-                st.markdown(f"**Matched stored question:** _{d['matched_question']}_")
-            if not multi:
-                st.markdown("**Top roles:** " + ", ".join(f"{r} ({p:.0%})" for r, p in d["role_candidates"]))
-            st.markdown("**Top topics:** " + ", ".join(f"{INTENT_NAMES[i]} ({p:.0%})" for i, p in d["intent_candidates"]))
+        st.caption(f":material/history: Assuming you still want to know about **{INTENT_NAMES[d['intent']].lower()}**.")
+    if d["kind"] != "invalid":
+        with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+            if d["kind"] == "answer":
+                st.badge(f"{d['confidence']:.0%} confident", icon=":material/verified:",
+                         color="green" if d["confidence"] >= 0.8 else "orange")
+                st.caption(f"similarity {d['similarity']:.2f}", width="content")
+            elif d["kind"] == "meta":
+                st.badge(META_LABELS.get(d.get("meta_intent"), "conversation").capitalize(), icon=":material/forum:")
+                st.caption(f"similarity {d['similarity']:.2f}", width="content")
+            else:
+                label, color = KIND_BADGES[d["kind"]]
+                st.badge(label, icon=":material/info:", color=color,
+                         help="The model was not confident enough to answer directly.")
+            if d["kind"] != "meta":
+                with st.popover("How the model decided", icon=":material/insights:", type="tertiary"):
+                    multi = len(d.get("roles") or []) > 1
+                    if multi:
+                        st.markdown(f"**Careers answered ({len(d['roles'])}):** " + ", ".join(d["roles"]) + "  \n"
+                                    "*Each listed career was recognised separately by the role classifier.*")
+                    st.markdown((f"**Predicted role:** {d['role']} ({d['role_conf']:.0%})  \n" if not multi else "") +
+                                f"**Predicted topic:** {INTENT_NAMES.get(d['intent'], d['intent'])} ({d['intent_conf']:.0%})  \n"
+                                f"**Best knowledge-base similarity:** {d['similarity']:.2f}")
+                    if d.get("matched_question"):
+                        st.markdown(f"**Matched stored question:** _{d['matched_question']}_")
+                    if not multi:
+                        st.markdown("**Top roles:** " + ", ".join(f"{r} ({p:.0%})" for r, p in d["role_candidates"]))
+                    st.markdown("**Top topics:** " + ", ".join(f"{INTENT_NAMES[i]} ({p:.0%})" for i, p in d["intent_candidates"]))
     actions = st.empty()  # always drawn, so the old buttons vanish as soon as a new question arrives
     if not latest:
         return
     with actions.container():
         if d.get("alternative"):
-            st.button(f"Did you mean: {d['alternative'][1]}", key=f"alt{index}", on_click=ask,
-                      args=(d["alternative"][1],))
+            st.button(f"Did you mean: {d['alternative'][1]}", key=f"alt{index}", icon=":material/lightbulb:",
+                      on_click=ask, args=(d["alternative"][1],))
         if d.get("suggestions"):
-            st.caption("You could also ask:")
-            for j, q in enumerate(d["suggestions"]):
-                st.button(q, key=f"sug{index}_{j}", on_click=ask, args=(q,))
+            st.caption("You could also ask")
+            with st.container(key=f"chips{index}", horizontal=True, gap="small"):
+                for j, q in enumerate(d["suggestions"]):
+                    st.button(q, key=f"sug{index}_{j}", icon=":material/arrow_forward:", wrap=True, on_click=ask,
+                              args=(q,))
 
 
 # ------------------------------------------------------------------ layout
-st.title("🎓 Career Guidance Chatbot")
-st.write("Ask about a career's skills, salary, education, daily tasks, tools, challenges, work environment, "
-         "career growth or how to get started. Follow-up questions such as *\"how much do they earn?\"* refer to "
-         "the career you asked about last. Answers come from the "
-         "[career-guidance QA dataset](https://huggingface.co/datasets/Pradeep016/career-guidance-qa-dataset) "
-         "via the NLP model trained in `career_guidance_chatbot.ipynb`.")
+st.html(STYLE)
 
 if not MODEL_PATH.exists():
     st.error(f"Model file not found: `{MODEL_PATH.name}`. Run `career_guidance_chatbot.ipynb` top to bottom "
@@ -146,38 +198,47 @@ except Exception as exc:  # corrupted file, version or encoder mismatch, or enco
     st.stop()
 
 meta = load_metadata()
+n_roles = bot.kb_["role"].nunique()
 st.session_state.setdefault("messages", [])
 st.session_state.setdefault("ctx", ConversationContext())
 
 with st.sidebar:
-    st.header("Try an example")
-    for q in EXAMPLES:
-        st.button(q, use_container_width=True, on_click=ask, args=(q,))
-    st.button("Clear conversation", type="secondary", use_container_width=True, on_click=clear)
-    st.divider()
-    st.subheader("About the model")
-    tm = meta.get("test_metrics", {})
-    st.markdown(f"- Knowledge base: **{meta.get('kb_size', len(bot.kb_))}** Q&A pairs, "
-                f"**{meta.get('n_roles', bot.kb_['role'].nunique())}** careers\n"
-                f"- Topic encoder: **{meta.get('encoder_label', bot.encoder)}**")
-    if tm:
-        st.markdown(f"- Held-out test (unseen wordings): role accuracy **{tm['role_accuracy']:.0%}**, "
-                    f"topic accuracy **{tm['intent_accuracy']:.0%}**")
-    real = meta.get("realistic_accuracy", {})
-    if "ALL (64 questions)" in real:
-        st.markdown(f"- Realistic questions handled correctly: **{real['ALL (64 questions)']:.0%}**")
+    st.subheader("🎓 Career Guide", anchor=False)
+    st.caption(f"Career-guidance assistant for {n_roles} careers")
+    st.button("New chat", icon=":material/edit_square:", width="stretch", on_click=clear)
     memory_note = st.empty()  # refreshed at the end, once this turn's answer has updated the memory
     show_memory(memory_note)
-    with st.expander(f"Careers covered ({bot.kb_['role'].nunique()})"):
+    st.caption("Try asking")
+    with st.container(key="examples", gap=None):
+        for icon, q in EXAMPLES:
+            st.button(q, icon=icon, type="tertiary", width="stretch", on_click=ask, args=(q,))
+    st.divider()
+    with st.expander("About the model", icon=":material/analytics:"):
+        tm = meta.get("test_metrics", {})
+        st.markdown(f"- Knowledge base: **{meta.get('kb_size', len(bot.kb_))}** Q&A pairs, "
+                    f"**{meta.get('n_roles', n_roles)}** careers\n"
+                    f"- Topic encoder: **{meta.get('encoder_label', bot.encoder)}**")
+        if tm:
+            st.markdown(f"- Held-out test (unseen wordings): role accuracy **{tm['role_accuracy']:.0%}**, "
+                        f"topic accuracy **{tm['intent_accuracy']:.0%}**")
+        real = meta.get("realistic_accuracy", {})
+        if "ALL (64 questions)" in real:
+            st.markdown(f"- Realistic questions handled correctly: **{real['ALL (64 questions)']:.0%}**")
+    with st.expander(f"Careers covered ({n_roles})", icon=":material/work:"):
         st.write(", ".join(sorted(bot.kb_["role"].unique())))
-    with st.expander("Topics"):
+    with st.expander("Topics", icon=":material/topic:"):
         st.write(", ".join(INTENT_NAMES[i] for i in INTENTS))
+    st.caption(f"Answers come from the [career-guidance QA dataset]({DATASET_URL}) via the NLP model trained in "
+               "`career_guidance_chatbot.ipynb`.")
 
-query = st.chat_input("Ask a career question…", max_chars=MAX_QUERY_CHARS) or st.session_state.pop("pending", None)
+query = st.chat_input("Ask about any career…", max_chars=MAX_QUERY_CHARS) or st.session_state.pop("pending", None)
+
+if not st.session_state.messages and not query:
+    render_welcome(n_roles)
 
 last = len(st.session_state.messages) - 1
 for i, m in enumerate(st.session_state.messages):
-    with st.chat_message(m["role"]):
+    with st.chat_message(m["role"], avatar=AVATAR if m["role"] == "assistant" else None):
         show_text(m["content"])
         if m["role"] == "assistant":
             render_details(m["details"], i, latest=(i == last and not query))  # a new question hides the old buttons
@@ -185,7 +246,7 @@ for i, m in enumerate(st.session_state.messages):
 if query:
     with st.chat_message("user"):
         show_text(query)
-    with st.chat_message("assistant"):
+    with st.chat_message("assistant", avatar=AVATAR):
         body = st.empty()  # the thinking indicator, then the answer in the same slot (same layout as the history)
         body.markdown(THINKING_HTML, unsafe_allow_html=True)
         started = time.monotonic()

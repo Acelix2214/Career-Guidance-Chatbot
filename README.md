@@ -55,6 +55,7 @@ on the Hugging Face Hub. It is downloaded automatically on the first run.
 | `chatbot_core.py` | Shared NLP logic: query normaliser, preprocessor, TF-IDF, encoder, classifiers, response policy, memory, save/load |
 | `chatbot_eval.py` | Evaluation helpers: frozen test sets, realistic-question and dialogue scoring, latency and cold start |
 | `app.py` | Streamlit chat interface |
+| `.streamlit/config.toml` | App theme: colours, font, light and dark mode |
 | `test_chatbot_core.py` | Assert-based tests: preprocessing, normaliser, decision policy, memory, encoder check, saved model |
 | `data/` | Frozen realistic test questions and dialogues, plus the extra training wordings |
 | `models/` | Trained model (`career_chatbot.joblib`) and `model_metadata.json` with all evaluation results |
@@ -102,7 +103,8 @@ Run the notebook first, then start the app:
 streamlit run app.py
 ```
 
-Open the URL Streamlit prints (usually http://localhost:8501). Things to try:
+Open the URL Streamlit prints (usually http://localhost:8501). An empty chat shows four starter questions, and the
+sidebar's **Try asking** list has one question for each feature below. Things to try:
 
 - *"What does a Data Scientist do?"* → *"how much do they earn?"* (follow-up memory)
 - *"ml engineer salary"* (abbreviation)
@@ -113,12 +115,15 @@ Open the URL Streamlit prints (usually http://localhost:8501). Things to try:
 - *"hello"*, *"what is the best job for me?"* → *"I like coding and maths"* (career suggestions), *"list the jobs for
   computer science"*
 
-Each answer shows:
-- a confidence bar;
+Each answer appears after a short "Thinking…" indicator and shows:
+- a confidence badge and the similarity score;
 - "I read your question as …" when the bot corrected something;
-- a "How the model decided" panel;
+- a "How the model decided" pop-up;
 - a "Did you mean …?" button when two topics are close;
 - suggested follow-up questions.
+
+The sidebar shows which career the bot remembers for follow-up questions. The app follows your system's light or
+dark mode; its colours and font are set in `.streamlit/config.toml`.
 
 The app does not retrain anything. It loads the saved model once and checks that the sentence encoder matches
 the model.
