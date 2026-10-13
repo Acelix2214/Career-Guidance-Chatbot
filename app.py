@@ -5,6 +5,7 @@ The model is trained and saved by career_guidance_chatbot.ipynb (models/career_c
 """
 import json
 import os
+import time
 
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -26,6 +27,21 @@ META_LABELS = {"greeting": "greeting", "thanks": "thanks", "help": "help request
                "recommend": "career recommendation", "list_careers": "career list"}
 KIND_LABELS = {"answer": "Answer", "meta": "Conversation", "clarify_role": "Needs clarification",
                "clarify_intent": "Needs clarification", "fallback": "Fallback", "invalid": "Invalid input"}
+THINKING_SECONDS = 1.0  # minimum time the indicator stays up; the model replies in well under that, so it would only flicker
+THINKING_HTML = """
+<style>
+.thinking {display: flex; align-items: center; gap: .4rem; opacity: .75; padding: .3rem 0;}
+.thinking span {width: .5rem; height: .5rem; border-radius: 50%; background: currentColor;
+                animation: thinking-bounce 1.2s infinite ease-in-out;}
+.thinking span:nth-child(2) {animation-delay: .15s;}
+.thinking span:nth-child(3) {animation-delay: .3s;}
+.thinking em {margin-left: .3rem;}
+@keyframes thinking-bounce {0%, 60%, 100% {transform: translateY(0); opacity: .35;}
+                            30% {transform: translateY(-.35rem); opacity: 1;}}
+@media (prefers-reduced-motion: reduce) {.thinking span {transform: none !important;}}
+</style>
+<div class="thinking"><span></span><span></span><span></span><em>Thinking…</em></div>
+"""
 
 
 @st.cache_resource(show_spinner="Loading the NLP model…")
@@ -50,6 +66,20 @@ def ask(question: str) -> None:
 def clear() -> None:
     st.session_state.messages = []
     st.session_state.ctx = ConversationContext()
+
+
+def show_memory(slot) -> None:
+    """The sidebar's "Remembered career" note, or nothing when no career is remembered."""
+    role = st.session_state.ctx.last_role
+    if role:
+        slot.caption(f"Remembered career: {role}")
+    else:
+        slot.empty()
+
+
+def show_text(text: str) -> None:
+    """Chat text as markdown, with "$" escaped so "$70,000 to $100,000" doesn't render as LaTeX."""
+    st.markdown(text.replace("$", r"\$"))
 
 
 def render_details(d: dict, index: int, latest: bool) -> None:
@@ -83,14 +113,17 @@ def render_details(d: dict, index: int, latest: bool) -> None:
             if not multi:
                 st.markdown("**Top roles:** " + ", ".join(f"{r} ({p:.0%})" for r, p in d["role_candidates"]))
             st.markdown("**Top topics:** " + ", ".join(f"{INTENT_NAMES[i]} ({p:.0%})" for i, p in d["intent_candidates"]))
+    actions = st.empty()  # always drawn, so the old buttons vanish as soon as a new question arrives
     if not latest:
         return
-    if d.get("alternative"):
-        st.button(f"Did you mean: {d['alternative'][1]}", key=f"alt{index}", on_click=ask, args=(d["alternative"][1],))
-    if d.get("suggestions"):
-        st.caption("You could also ask:")
-        for j, q in enumerate(d["suggestions"]):
-            st.button(q, key=f"sug{index}_{j}", on_click=ask, args=(q,))
+    with actions.container():
+        if d.get("alternative"):
+            st.button(f"Did you mean: {d['alternative'][1]}", key=f"alt{index}", on_click=ask,
+                      args=(d["alternative"][1],))
+        if d.get("suggestions"):
+            st.caption("You could also ask:")
+            for j, q in enumerate(d["suggestions"]):
+                st.button(q, key=f"sug{index}_{j}", on_click=ask, args=(q,))
 
 
 # ------------------------------------------------------------------ layout
@@ -133,37 +166,48 @@ with st.sidebar:
     real = meta.get("realistic_accuracy", {})
     if "ALL (64 questions)" in real:
         st.markdown(f"- Realistic questions handled correctly: **{real['ALL (64 questions)']:.0%}**")
-    ctx = st.session_state.ctx
-    if ctx.last_role:
-        st.caption(f"Remembered career: {ctx.last_role}")
+    memory_note = st.empty()  # refreshed at the end, once this turn's answer has updated the memory
+    show_memory(memory_note)
     with st.expander(f"Careers covered ({bot.kb_['role'].nunique()})"):
         st.write(", ".join(sorted(bot.kb_["role"].unique())))
     with st.expander("Topics"):
         st.write(", ".join(INTENT_NAMES[i] for i in INTENTS))
 
 query = st.chat_input("Ask a career question…", max_chars=MAX_QUERY_CHARS) or st.session_state.pop("pending", None)
-if query:
-    try:
-        r = bot.respond(query, st.session_state.ctx)
-        st.session_state.ctx = r.context or st.session_state.ctx
-        details = {"kind": r.kind, "confidence": r.confidence, "similarity": r.similarity, "role": r.role,
-                   "role_conf": r.role_conf, "intent": r.intent, "intent_conf": r.intent_conf,
-                   "matched_question": r.matched_question, "role_candidates": r.role_candidates,
-                   "intent_candidates": r.intent_candidates, "corrections": r.corrections,
-                   "normalized_query": r.normalized_query, "used_memory": r.used_memory,
-                   "alternative": r.alternative, "roles": r.roles, "meta_intent": r.meta_intent,
-                   "suggestions": (r.suggestions if r.kind == "meta" else
-                                   bot.suggest_followups(r.role, exclude=[r.intent])
-                                   if r.kind == "answer" and len(r.roles) < 2 else [])}
-        text = r.text
-    except Exception as exc:
-        text, details = f"Sorry, something went wrong while processing your question ({exc}).", {"kind": "invalid"}
-    st.session_state.messages += [{"role": "user", "content": query},
-                                  {"role": "assistant", "content": text, "details": details}]
 
 last = len(st.session_state.messages) - 1
 for i, m in enumerate(st.session_state.messages):
     with st.chat_message(m["role"]):
-        st.markdown(m["content"].replace("$", r"\$"))  # keep "$70,000 to $100,000" from rendering as LaTeX
+        show_text(m["content"])
         if m["role"] == "assistant":
-            render_details(m["details"], i, latest=(i == last))
+            render_details(m["details"], i, latest=(i == last and not query))  # a new question hides the old buttons
+
+if query:
+    with st.chat_message("user"):
+        show_text(query)
+    with st.chat_message("assistant"):
+        body = st.empty()  # the thinking indicator, then the answer in the same slot (same layout as the history)
+        body.markdown(THINKING_HTML, unsafe_allow_html=True)
+        started = time.monotonic()
+        try:
+            r = bot.respond(query, st.session_state.ctx)
+            st.session_state.ctx = r.context or st.session_state.ctx
+            details = {"kind": r.kind, "confidence": r.confidence, "similarity": r.similarity, "role": r.role,
+                       "role_conf": r.role_conf, "intent": r.intent, "intent_conf": r.intent_conf,
+                       "matched_question": r.matched_question, "role_candidates": r.role_candidates,
+                       "intent_candidates": r.intent_candidates, "corrections": r.corrections,
+                       "normalized_query": r.normalized_query, "used_memory": r.used_memory,
+                       "alternative": r.alternative, "roles": r.roles, "meta_intent": r.meta_intent,
+                       "suggestions": (r.suggestions if r.kind == "meta" else
+                                       bot.suggest_followups(r.role, exclude=[r.intent])
+                                       if r.kind == "answer" and len(r.roles) < 2 else [])}
+            text = r.text
+        except Exception as exc:
+            text, details = f"Sorry, something went wrong while processing your question ({exc}).", {"kind": "invalid"}
+        time.sleep(max(0.0, THINKING_SECONDS - (time.monotonic() - started)))
+        st.session_state.messages += [{"role": "user", "content": query},
+                                      {"role": "assistant", "content": text, "details": details}]
+        with body:
+            show_text(text)
+        render_details(details, len(st.session_state.messages) - 1, latest=True)
+    show_memory(memory_note)
