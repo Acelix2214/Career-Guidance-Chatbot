@@ -1,42 +1,69 @@
 # Career Guidance Support Chatbot
 
-An NLP chatbot that answers career-guidance questions (skills, salary, education, daily tasks, tools,
-challenges, work environment, career growth, getting started) for 54 careers. It combines text
-classification and cosine-similarity retrieval, and uses confidence thresholds to ask for clarification or
-fall back instead of guessing.
+An NLP chatbot that answers career-guidance questions for 54 careers: skills, salary, education, daily tasks,
+tools, challenges, work environment, career growth and getting started. It understands abbreviations and typos.
+It remembers the career you just asked about, so follow-ups like *"how much do they earn?"* work. When it isn't
+confident, it asks a clarifying question or falls back instead of guessing.
 
-- **Main deliverable:** [`career_guidance_chatbot.ipynb`](career_guidance_chatbot.ipynb), the full pipeline with
-  data analysis, training, evaluation, sample conversations and error analysis.
+- **Main deliverable:** [`career_guidance_chatbot.ipynb`](career_guidance_chatbot.ipynb), which covers data
+  analysis, preprocessing, feature extraction, models, evaluation, sample conversations, error analysis and the
+  pipeline diagram.
 - **Demo:** [`app.py`](app.py), a Streamlit chat interface that loads the model saved by the notebook.
+
+## Rubric and deliverables map
+
+| Rubric criterion | Where |
+|---|---|
+| 1. NLP dataset / corpus | Notebook §3 (dataset card), §4 (quality checks, verified topic labels), §5 (EDA), §7.1 (extra training wordings) |
+| 2. Text preprocessing & pipeline | §6: normalisation, tokenisation, stop words, stemming vs lemmatisation, query normaliser (aliases and typos) |
+| 3. Feature extraction / representation | §8 and §11.2: TF-IDF word unigrams, 1–2-grams, character n-grams and sentence embeddings, compared and justified |
+| 4. NLP model / language understanding | §9–§12: role and topic classifiers (Logistic Regression), cosine-similarity retrieval, encoder comparison, response policy |
+| 5. Chatbot functionality | §12–§14 and `app.py`: clarify, fallback, "Did you mean", follow-up memory, suggestions; realistic-question tests |
+| 6. Evaluation & error analysis | §13 (accuracy, precision, recall, F1, confusion matrix, retrieval metrics, cross-validation, realistic and dialogue tests, speed), §14, §15 |
+| 7. Code quality | Modules `chatbot_core.py` / `chatbot_eval.py`, docstrings, `test_chatbot_core.py`, §16.2 programming concepts |
+| 8. Pipeline documentation | §16: diagram and step-by-step walkthrough |
+| 9. Presentation | Slide deck and live demo (`streamlit run app.py`) |
 
 ## Dataset
 
 [`Pradeep016/career-guidance-qa-dataset`](https://huggingface.co/datasets/Pradeep016/career-guidance-qa-dataset)
-on the Hugging Face Hub. It is downloaded automatically by `datasets.load_dataset` on the first run and
-cached in `~/.cache/huggingface`.
+on the Hugging Face Hub. It is downloaded automatically on the first run.
 
-- 1,620 rows; columns `role`, `question`, `answer`; no missing values or duplicates.
-- 54 roles × 30 questions. Each role's questions cover **10 topics × 3 paraphrases** in a fixed order. The
-  notebook verifies this structure (question templates and answer similarity) and derives an `intent` label from it.
-- The answers (including salary figures) are used as provided by the dataset and are not independently
-  verified. Check the dataset page for its license and terms before reusing it.
+- 1,620 rows with columns `role`, `question` and `answer`; no missing values or duplicates.
+- 54 roles × 30 questions = 10 topics × 3 paraphrases in a fixed order. The notebook verifies this and derives a
+  topic (intent) label.
+- Two extra evaluation files were written for this project and frozen before any tuning (their hashes are
+  printed in the notebook):
+  - `data/realistic_queries.csv`: 64 questions covering informal wording, abbreviations, typos, overlapping
+    topics, no career named, unknown careers and off-topic questions.
+  - `data/conversations.csv`: 12 multi-turn dialogues.
+- **Extra training wordings:** `data/extra_question_templates.csv` holds 50 hand-written question wordings, 5 per
+  topic (e.g. *"What compensation does a {role} receive?"*). Each is filled in for all 54 careers, giving 2,700
+  extra **training** questions.
+  - They reuse the dataset's labels. They are never stored as answers and never used as test data.
+  - The notebook checks automatically that they don't copy any test wording or hand-written test question (§7.1).
+  - They are kept only because they improved validation results: topic macro-F1 went from 0.77 to 0.88 (§11.5).
+  - The original dataset is unchanged.
+- The answers are used as provided by the dataset. Check the dataset page for its terms before reusing it.
 
 ## Project structure
 
 | Path | Purpose |
 |---|---|
-| `career_guidance_chatbot.ipynb` | Primary deliverable: the 17-section notebook (EDA → preprocessing → models → evaluation → analysis) |
-| `chatbot_core.py` | Shared code: preprocessing, `CareerChatbot` model, response-selection policy, save/load. Imported by both the notebook and the app |
+| `career_guidance_chatbot.ipynb` | Primary deliverable (generated by `build_notebook.py`, then executed) |
+| `build_notebook.py` | Builds the notebook's cells; edit this file, then rebuild the notebook |
+| `chatbot_core.py` | Shared NLP logic: query normaliser, preprocessor, TF-IDF, encoder, classifiers, response policy, memory, save/load |
+| `chatbot_eval.py` | Evaluation helpers: frozen test sets, realistic-question and dialogue scoring, latency and cold start |
 | `app.py` | Streamlit chat interface |
-| `models/career_chatbot.joblib` | Trained model written by the notebook (vectorizer, classifiers, knowledge base, thresholds) |
-| `models/model_metadata.json` | Model settings and the measured test / cross-validation metrics |
-| `test_chatbot_core.py` | Self-checks for preprocessing, the decision policy and the saved model |
+| `test_chatbot_core.py` | Assert-based tests: preprocessing, normaliser, decision policy, memory, encoder check, saved model |
+| `data/` | Frozen realistic test questions and dialogues, plus the extra training wordings |
+| `models/` | Trained model (`career_chatbot.joblib`) and `model_metadata.json` with all evaluation results |
+| `backup/v1.0/` | The previous version (code and model), used for the before/after comparison |
 | `requirements.txt` | Python dependencies |
-| `.venv/` | Project-local virtual environment (not required if you create your own) |
 
 ## Setup
 
-Requires Python 3.10 or newer (developed with Python 3.14 on Windows 11, CPU only).
+Requires Python 3.10 or newer. Developed with Python 3.14 on Windows 11, CPU only.
 
 ```bash
 python -m venv .venv
@@ -45,13 +72,12 @@ python -m venv .venv
 # macOS / Linux
 source .venv/bin/activate
 
-# Optional: the CPU-only PyTorch build is a much smaller download
-pip install torch --index-url https://download.pytorch.org/whl/cpu
+pip install torch --index-url https://download.pytorch.org/whl/cpu   # optional: smaller CPU-only build
 pip install -r requirements.txt
 ```
 
-The first run needs internet access to download the dataset and the
-`sentence-transformers/all-MiniLM-L6-v2` model (about 90 MB). After that, both are cached locally.
+The first run needs internet access for three downloads: the dataset, the sentence encoders compared in §11.4
+(about 100–130 MB each), and NLTK's WordNet data for the lemmatisation demo (saved to `./nltk_data`).
 
 ## Run the notebook
 
@@ -59,11 +85,10 @@ The first run needs internet access to download the dataset and the
 jupyter notebook career_guidance_chatbot.ipynb
 ```
 
-Select the `.venv` interpreter/kernel and choose **Run All**. A full run took about 1.5 minutes on a laptop CPU
-once the dataset and MiniLM model were cached. The first run takes longer because it downloads them.
-The notebook trains and evaluates the models and writes `models/career_chatbot.joblib`.
+Select the `.venv` kernel and choose **Run All**. A full run took about 6 minutes on a laptop CPU with the
+models already cached. The notebook writes `models/career_chatbot.joblib` and `models/model_metadata.json`.
 
-To run it non-interactively instead:
+To run it without opening Jupyter:
 
 ```bash
 jupyter nbconvert --to notebook --execute --inplace career_guidance_chatbot.ipynb
@@ -71,81 +96,105 @@ jupyter nbconvert --to notebook --execute --inplace career_guidance_chatbot.ipyn
 
 ## Launch the Streamlit app
 
-Run the notebook first (it creates the model file), then:
+Run the notebook first, then start the app:
 
 ```bash
 streamlit run app.py
 ```
 
-Open the URL Streamlit prints (usually http://localhost:8501). The app shows a chat-style conversation with
-session history and a confidence bar for each answer. A "How the model decided" panel lists the predicted
-role and topic with their probabilities and the matched stored question. Sidebar buttons give example
-questions and clear the conversation.
+Open the URL Streamlit prints (usually http://localhost:8501). Things to try:
 
-The app does **not** retrain anything. It loads the saved model once (`st.cache_resource`) and calls the same
-`CareerChatbot.respond()` method that the notebook evaluates.
+- *"What does a Data Scientist do?"* → *"how much do they earn?"* (follow-up memory)
+- *"ml engineer salary"* (abbreviation)
+- *"what skils does a data scienist need"* (typos)
+- *"What is the average salary?"* (the bot asks which career you mean)
+- *"tell me a joke"* (fallback)
+- *"What is a Data Analyst, Data Scientist, Business Analyst?"* (several careers in one question)
+- *"hello"*, *"what is the best job for me?"* → *"I like coding and maths"* (career suggestions), *"list the jobs for
+  computer science"*
 
-To check the shared code and the saved model:
+Each answer shows:
+- a confidence bar;
+- "I read your question as …" when the bot corrected something;
+- a "How the model decided" panel;
+- a "Did you mean …?" button when two topics are close;
+- suggested follow-up questions.
+
+The app does not retrain anything. It loads the saved model once and checks that the sentence encoder matches
+the model.
 
 ```bash
-python test_chatbot_core.py
+python test_chatbot_core.py     # self-checks for the shared code and the saved model
 ```
 
-## NLP pipeline and model
+## NLP pipeline
 
-1. **Preprocessing** (`TextPreprocessor`): Unicode normalisation, lower-casing, regex tokenisation, and
-   stop-word removal that *keeps* intent-bearing question words (`how`, `much`, `where`, …). Optional
-   Snowball stemming. The variant is chosen by validation.
-2. **Features:** TF-IDF (unigrams and bigrams, sub-linear TF) and pretrained MiniLM sentence embeddings.
-3. **Models:**
-   - **Role classifier:** TF-IDF + Logistic Regression (54 classes).
-   - **Intent classifier:** Logistic Regression on MiniLM embeddings (10 classes). The notebook selected this
-     over TF-IDF, Linear SVM and Complement Naive Bayes using validation on the training split only.
-   - **Answer selection:** cosine similarity picks the closest stored question inside the predicted
-     (role, intent) group and returns its answer.
-4. **Response selection:** thresholds learned from training-side data decide between *answer*,
-   *clarify role*, *clarify topic* and *fallback*. They are: best knowledge-base similarity
-   (catches out-of-scope questions), role probability (catches questions with no career named), and intent
-   probability (chosen to maximise correct minus wrong answers).
+1. **User input** goes to `CareerChatbot.respond(query, context)`. Empty or overlong input is rejected.
+2. **Query normalisation** (`QueryNormalizer`):
+   - Expands abbreviations (*ml → machine learning*, *sysadmin → systems administrator*), but never words the
+     dataset itself uses.
+   - Corrects typos towards knowledge-base words (*skils → skills*).
+3. **Preprocessing** (`TextPreprocessor`): NFKC normalisation, lower-casing, regex tokenisation, and stop-word
+   removal that keeps question words (*how, much, where*). Stemming and lemmatisation were compared; the
+   selected variant is stop-word removal only.
+4. **Feature extraction:**
+   - TF-IDF word 1–2-grams for the career.
+   - `e5-small-v2` sentence embeddings for the topic. This encoder was chosen over MiniLM, bge-small and
+     arctic-embed-xs on validation folds.
+5. **Models:** two Logistic Regression classifiers, one for the career (54 classes) and one for the topic
+   (10 classes). Both are trained on the dataset questions plus the 2,700 extra training wordings.
+6. **Cosine similarity:**
+   - The best similarity to any stored question decides whether the question is in scope.
+   - The closest stored question inside the predicted (career, topic) group supplies the answer.
+7. **Response selection:**
+   - Thresholds learned on validation data choose between *answer*, *clarify career*, *clarify topic* and
+     *fallback*.
+   - When the two best topics are close, the bot answers and also offers "Did you mean …?".
+   - Follow-up memory fills a missing career from the previous turn, unless the message names another career,
+     contains an unknown word, or is off-topic.
+   - A question that lists several careers is split, and the topic is answered for each career.
+   - Greetings, thanks, help requests and career discovery (*"best job for me?"*, *"jobs for computer science"*)
+     are recognised by embedding similarity to the example phrases in `data/meta_intents.csv`. Career suggestions
+     rank the 54 careers by similarity between the user's interests and each career's stored answers.
 
-**Evaluation design.** The test set is a *leave-one-paraphrase-out* split. One wording from every
-(role, topic) group is held out (540 questions), so every test question uses a wording never seen in training.
-A sibling answer still exists in the knowledge base. Model selection uses an inner split of the training data,
-and a 3-fold rotation of the held-out wording gives a cross-validated estimate.
+**Evaluation design.** The test set is a *leave-one-paraphrase-out* split, so every test question uses a
+wording never seen in training (540 questions). All model and threshold choices use inner validation folds.
+The test slot, the realistic questions and the dialogues are scored only after all choices are made.
 
-## Results
+## Results (from the executed notebook)
 
-All numbers below come from the executed notebook (see Sections 13–15 for the full tables).
+| Metric | v1.0 | v1.1 |
+|---|---|---|
+| Topic accuracy, held-out test (unseen wordings) | 0.715 | 0.883 |
+| Topic macro-F1, held-out test | 0.646 | 0.857 |
+| Career accuracy, held-out test | 1.000 | 1.000 |
+| Accuracy of the answers the bot gives (held-out test) | 0.715 | 0.952 |
+| Hybrid Hit@1, 3-fold cross-validation mean | 0.829 | 0.882 |
+| Realistic questions handled correctly (64) | 0.806 | 0.919 |
+| Multi-turn dialogue task success (12 dialogues) | 0.083 | 0.583 |
+| Off-topic test questions that fall back (15) | 15/15 | 15/15 |
+| Warm reply time (median) | ~13 ms | ~23 ms |
 
-| Metric (held-out test, unseen wordings) | Value |
-|---|---|
-| Role accuracy | 1.000 |
-| Intent accuracy / macro-F1 | 0.715 / 0.646 |
-| Retrieval-only Hit@1: TF-IDF / MiniLM | 0.293 / 0.700 |
-| Hybrid model Hit@1 (test / 3-fold CV mean ± std) | 0.715 / 0.829 ± 0.140 |
-| Coverage / accuracy of answered (with thresholds) | 0.987 / 0.720 |
-| Fallback on 15 hand-written out-of-domain questions | 15 / 15 |
-| Clarification on 6 hand-written role-free questions | 6 / 6 |
-| 25 hand-written realistic questions answered correctly | 23 / 25 |
+In v1.1 the bot asks "which topic?" for about 11% of the held-out test questions instead of guessing, which is
+why the accuracy of the answers it does give is higher than its overall topic accuracy.
 
-**Metrics used:**
-- Classification is measured with accuracy and macro precision, recall and F1, plus a confusion matrix.
-- Retrieval is measured with Hit@k and mean reciprocal rank (MRR).
-- The full chatbot is measured with coverage, accuracy of answered questions, wrong-answer rate, and
-  fallback/clarification rates.
+The notebook also reports precision, recall and F1 per topic, a confusion matrix, retrieval Hit@k and MRR,
+results per realistic category, and cold-start time. `models/model_metadata.json` stores the exact values.
 
 ## Limitations
 
-- The dataset is small and templated: only 3 wordings per topic, one fixed answer per question, and only the
-  54 careers it contains.
-- Most errors come from topics whose wordings overlap. "Which programming languages…" (Skills) is predicted as
-  Tools, and "educational requirements" is predicted as Getting started. The notebook shows these questions'
-  answers overlap too. These errors are made *confidently*, so thresholds do not catch them.
-- Role recognition needs the role name. Abbreviations not in the data ("ml engineer", "SRE") lead to a
-  clarification request.
-- The hand-written out-of-domain, role-free and probe sets are small and written for this project. They are
-  indicative, not a benchmark.
-- There is no conversation memory: each message is answered independently.
+- Small, templated dataset: 3 wordings per topic, one fixed answer per question, and only the 54 careers it
+  contains.
+- Most remaining errors are programming-languages questions (labelled Skills) read as Tools. The dataset's own
+  answers to that question read like tools answers, so part of this is label ambiguity.
+- Small talk and career discovery take over 2 of the 6 role-free realistic questions (*"how much can I earn"*),
+  which get *"tell me what you enjoy"* instead of *"which career do you mean?"* (notebook §15.3).
+- The extra training wordings were written by one person: they add variety to the questions only, not new
+  careers or answers.
+- The chosen encoder compresses similarities into a narrow range, which makes the in-scope threshold delicate.
+  Some very short follow-ups fall back, and a few off-topic sentences get a clarifying question instead of a
+  fallback.
+- The realistic test set and dialogues were written by the author and inspected once during development (see
+  notebook §15.3), so their scores are optimistic.
 
-Possible improvements (paraphrase augmentation, encoder fine-tuning, role aliases, conversation state) are
-discussed in Section 15 of the notebook.
+More detail and possible improvements are in notebook §15.
