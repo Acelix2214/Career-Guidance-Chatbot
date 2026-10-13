@@ -164,6 +164,6 @@ if query:
 last = len(st.session_state.messages) - 1
 for i, m in enumerate(st.session_state.messages):
     with st.chat_message(m["role"]):
-        st.markdown(m["content"])
+        st.markdown(m["content"].replace("$", r"\$"))  # keep "$70,000 to $100,000" from rendering as LaTeX
         if m["role"] == "assistant":
             render_details(m["details"], i, latest=(i == last))
