@@ -7,6 +7,8 @@ Colours and font are set in .streamlit/config.toml; STYLE below adds the chat la
 import json
 import os
 import time
+import csv
+from datetime import datetime
 
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
 os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
@@ -101,6 +103,10 @@ def ask(question: str) -> None:
 def clear() -> None:
     st.session_state.messages = []
     st.session_state.ctx = ConversationContext()
+    # Clear out any lingering feedback keys so a new chat starts fresh
+    for key in list(st.session_state.keys()):
+        if key.startswith("feedback_"):
+            del st.session_state[key]
 
 
 def show_memory(slot) -> None:
@@ -168,6 +174,42 @@ def render_details(d: dict, index: int, latest: bool) -> None:
                     if not multi:
                         st.markdown("**Top roles:** " + ", ".join(f"{r} ({p:.0%})" for r, p in d["role_candidates"]))
                     st.markdown("**Top topics:** " + ", ".join(f"{INTENT_NAMES[i]} ({p:.0%})" for i, p in d["intent_candidates"]))
+
+    # --- Feature 2: Quick Feedback Widget (Vanishes & Locks After Vote) ---
+    feedback_key = f"feedback_{index}"
+    if feedback_key not in st.session_state:
+        st.session_state[feedback_key] = None
+
+    def save_feedback(rating: str):
+        st.session_state[feedback_key] = rating
+        file_exists = os.path.isfile("feedback_log.csv")
+        try:
+            with open("feedback_log.csv", mode="a", newline="", encoding="utf-8") as f:
+                writer = csv.writer(f)
+                if not file_exists:
+                    writer.writerow(["Timestamp", "User_Query", "Normalized_Query", "Rating"])
+                
+                user_q = st.session_state.messages[index - 1]["content"] if index > 0 and index < len(st.session_state.messages) else "N/A"
+                writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_q, d.get("normalized_query", ""), rating])
+        except Exception as e:
+            print(f"Error saving feedback: {e}")
+
+    # Only show buttons if no vote has been cast yet for this specific message
+    if st.session_state[feedback_key] is None:
+        col_fb1, col_fb2, col_fb3 = st.columns([0.1, 0.1, 0.8])
+        with col_fb1:
+            if st.button("👍", key=f"thumbs_up_{index}", help="Helpful"):
+                save_feedback("helpful")
+                st.rerun()
+        with col_fb2:
+            if st.button("👎", key=f"thumbs_down_{index}", help="Not helpful"):
+                save_feedback("not_helpful")
+                st.rerun()
+    else:
+        # Once voted, display a clean static confirmation message instead of the buttons
+        vote_text = "Thanks! Logged as helpful." if st.session_state[feedback_key] == "helpful" else "Thanks! Logged for improvement."
+        st.caption(f":material/check_circle: {vote_text}")
+
     actions = st.empty()  # always drawn, so the old buttons vanish as soon as a new question arrives
     if not latest:
         return
@@ -205,7 +247,28 @@ st.session_state.setdefault("ctx", ConversationContext())
 with st.sidebar:
     st.subheader("🎓 Career Guide", anchor=False)
     st.caption(f"Career-guidance assistant for {n_roles} careers")
-    st.button("New chat", icon=":material/edit_square:", width="stretch", on_click=clear)
+    st.button("New chat", icon=":material/edit_square:", width="stretch", on_click=clear, key="new_chat_btn")
+    
+    # --- Feature 1: Export Chat History ---
+    # --- Feature 1: Export Chat History (Disabled when empty) ---
+    chat_export = ""
+    has_messages = bool(st.session_state.get("messages"))
+    
+    if has_messages:
+        for m in st.session_state.messages:
+            role = "User" if m["role"] == "user" else "Assistant"
+            chat_export += f"{role}: {m['content']}\n\n"
+
+    st.download_button(
+        label="Export Chat History",
+        data=chat_export if has_messages else "",
+        file_name="career_guidance_chat_history.txt",
+        mime="text/plain",
+        icon=":material/download:",
+        key="export_chat_btn",
+        disabled=not has_messages
+    )
+
     memory_note = st.empty()  # refreshed at the end, once this turn's answer has updated the memory
     show_memory(memory_note)
     st.caption("Try asking")
@@ -266,9 +329,12 @@ if query:
         except Exception as exc:
             text, details = f"Sorry, something went wrong while processing your question ({exc}).", {"kind": "invalid"}
         time.sleep(max(0.0, THINKING_SECONDS - (time.monotonic() - started)))
+        time.sleep(max(0.0, THINKING_SECONDS - (time.monotonic() - started)))
         st.session_state.messages += [{"role": "user", "content": query},
                                       {"role": "assistant", "content": text, "details": details}]
         with body:
             show_text(text)
         render_details(details, len(st.session_state.messages) - 1, latest=True)
     show_memory(memory_note)
+    if query:
+        st.rerun() # Or st.rerun() depending on typo check
