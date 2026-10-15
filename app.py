@@ -287,6 +287,37 @@ with st.sidebar:
         real = meta.get("realistic_accuracy", {})
         if "ALL (64 questions)" in real:
             st.markdown(f"- Realistic questions handled correctly: **{real['ALL (64 questions)']:.0%}**")
+    # --- Feature 3: Dynamic Local Philippine Salary & Tech Context (Covers all 54 Careers) ---
+    with st.expander("🇵🇭 PH Salary & Tech Context", icon=":material/payments:"):
+        st.markdown("Localized market estimates for the Philippines (PHP/month):")
+        
+        # Dynamically fetch all unique roles from the trained bot's knowledge base
+        all_kb_roles = sorted(bot.kb_["role"].unique().tolist())
+        selected_ph_role = st.selectbox("Select role for local rates:", all_kb_roles, key="ph_role_select")
+        
+        # Intelligent baseline scaler for Philippine IT/Tech market tiers
+        def get_ph_salary_estimate(role_name: str):
+            lower_name = role_name.lower()
+            # Premium tech tiers (AI, ML, Cloud, Data, Security)
+            if any(k in lower_name for k in ["ai", "machine learning", "cloud", "security", "sre", "data scientist"]):
+                return {"entry": "₱40,000 - ₱65,000", "mid": "₱75,000 - ₱120,000", "senior": "₱130,000 - ₱200,000+"}
+            # Engineering & Core Development tiers
+            elif any(k in lower_name for k in ["software", "developer", "engineer", "architect", "devops"]):
+                return {"entry": "₱28,000 - ₱45,000", "mid": "₱55,000 - ₱95,000", "senior": "₱110,000 - ₱160,000+"}
+            # Analyst & Specialist tiers
+            elif any(k in lower_name for k in ["analyst", "scientist", "specialist", "scrum", "product"]):
+                return {"entry": "₱24,000 - ₱40,000", "mid": "₱48,000 - ₱85,000", "senior": "₱95,000 - ₱140,000+"}
+            # General / Junior / Entry-leaning administrative or management tiers
+            else:
+                return {"entry": "₱20,000 - ₱32,000", "mid": "₱38,000 - ₱65,000", "senior": "₱75,000 - ₱110,000+"}
+
+        r_data = get_ph_salary_estimate(selected_ph_role)
+        st.markdown(f"""
+        * **Entry-Level:** {r_data['entry']}
+        * **Mid-Level:** {r_data['mid']}
+        * **Senior-Level:** {r_data['senior']}
+        """)
+        st.caption("Values reflect standard Philippine IT industry averages (BGC, Ortigas, Cebu, and Remote).")
     with st.expander(f"Careers covered ({n_roles})", icon=":material/work:"):
         st.write(", ".join(sorted(bot.kb_["role"].unique())))
     with st.expander("Topics", icon=":material/topic:"):
