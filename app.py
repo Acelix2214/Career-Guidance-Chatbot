@@ -53,6 +53,15 @@ STYLE = """
 [data-testid="stChatMessageAvatarCustom"] {background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;}
 [data-testid="stChatInput"] {box-shadow: 0 4px 18px rgba(15, 23, 42, .08);}
 
+/* Fade-in animation for smooth streaming */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.fade-in-text {
+    animation: fadeIn 0.4s ease-out forwards;
+}
+
 /* Thinking indicator */
 .thinking {display: flex; align-items: center; gap: .4rem; opacity: .75; padding: .3rem 0;}
 .thinking span {width: .5rem; height: .5rem; border-radius: 50%; background: currentColor;
@@ -100,13 +109,42 @@ def ask(question: str) -> None:
     st.session_state.pending = question
 
 
-def clear() -> None:
+def new_chat() -> None:
+    """Archive current chat to history list or update existing, then reset for a fresh chat session."""
+    if st.session_state.get("messages"):
+        active_idx = st.session_state.get("active_session_index")
+        first_q = next((m["content"] for m in st.session_state.messages if m["role"] == "user"), "Chat Session")
+        title = (first_q[:25] + "...") if len(first_q) > 25 else first_q
+        
+        session_data = {
+            "title": title,
+            "messages": list(st.session_state.messages),
+            "ctx": st.session_state.ctx
+        }
+        
+        sessions = st.session_state.setdefault("sessions", [])
+        
+        if active_idx is not None and active_idx < len(sessions):
+            # If we were viewing an old chat and modified it, update and move it to the top
+            sessions.pop(active_idx)
+            sessions.append(session_data)
+        else:
+            # Otherwise, it's a completely new chat session
+            sessions.append(session_data)
+            
     st.session_state.messages = []
     st.session_state.ctx = ConversationContext()
-    # Clear out any lingering feedback keys so a new chat starts fresh
+    st.session_state.active_session_index = None
     for key in list(st.session_state.keys()):
         if key.startswith("feedback_"):
             del st.session_state[key]
+
+def load_past_session(idx: int) -> None:
+    """Switch the active view to a selected past session from the history list."""
+    session = st.session_state.sessions[idx]
+    st.session_state.messages = session["messages"]
+    st.session_state.ctx = session["ctx"]
+    st.session_state.active_session_index = idx  # Track which session is currently open
 
 
 def show_memory(slot) -> None:
@@ -193,7 +231,6 @@ def render_details(d: dict, index: int, latest: bool) -> None:
         except Exception as e:
             print(f"Error saving feedback: {e}")
 
-    # Columns: Thumbs Up, Thumbs Down, Copy Popover, Status Text / Spacer
     col_fb1, col_fb2, col_copy, col_fb3 = st.columns([0.1, 0.1, 0.22, 0.58], vertical_alignment="center")
     with col_fb1:
         if st.session_state[feedback_key] is None:
@@ -217,7 +254,7 @@ def render_details(d: dict, index: int, latest: bool) -> None:
             v_text = "Logged as helpful." if st.session_state[feedback_key] == "helpful" else "Logged for improvement."
             st.caption(f":material/check_circle: {v_text}")
 
-    actions = st.empty()  # always drawn, so the old buttons vanish as soon as a new question arrives
+    actions = st.empty()
     if not latest:
         return
     with actions.container():
@@ -241,7 +278,7 @@ if not MODEL_PATH.exists():
     st.stop()
 try:
     bot = load_bot()
-except Exception as exc:  # corrupted file, version or encoder mismatch, or encoder download failure
+except Exception as exc:
     st.error(f"Could not load the model: {exc}\n\nRe-run the notebook to regenerate it; the first run needs "
              "internet access to download the sentence-embedding model.")
     st.stop()
@@ -250,14 +287,25 @@ meta = load_metadata()
 n_roles = bot.kb_["role"].nunique()
 st.session_state.setdefault("messages", [])
 st.session_state.setdefault("ctx", ConversationContext())
+st.session_state.setdefault("sessions", [])
 
 with st.sidebar:
     st.subheader("🎓 Career Guide", anchor=False)
     st.caption(f"Career-guidance assistant for {n_roles} careers")
-    st.button("New chat", icon=":material/edit_square:", width="stretch", on_click=clear, key="new_chat_btn")
-    
+    st.button("New chat", icon=":material/edit_square:", width="stretch", on_click=new_chat, key="new_chat_btn")
+
+    # --- Recent Conversations Sidebar List ---
+    if st.session_state.sessions:
+        st.caption("Recent Chats")
+        for s_idx in reversed(range(len(st.session_state.sessions))):
+            session = st.session_state.sessions[s_idx]
+            if st.button(session["title"], key=f"history_session_{s_idx}", width="stretch", type="tertiary"):
+                load_past_session(s_idx)
+                st.rerun()
+            st.markdown('<hr style="margin: 2px 0px 8px 0px; border-color: rgba(255, 255, 255, 0.08);">', unsafe_allow_html=True)
+        st.divider()
+
     # --- Feature 1 & 4: Structured Career Report & Chat Export ---
-    st.divider()
     st.subheader("📄 Report Generator")
     
     report_content = "=== CAREER GUIDANCE ASSISTANT - SESSION REPORT ===\n\n"
@@ -278,7 +326,7 @@ with st.sidebar:
         disabled=not bool(st.session_state.get("messages"))
     )
 
-    memory_note = st.empty()  # refreshed at the end, once this turn's answer has updated the memory
+    memory_note = st.empty()
     show_memory(memory_note)
     st.caption("Try asking")
     with st.container(key="examples", gap=None):
@@ -341,14 +389,15 @@ for i, m in enumerate(st.session_state.messages):
     with st.chat_message(m["role"], avatar=AVATAR if m["role"] == "assistant" else None):
         show_text(m["content"])
         if m["role"] == "assistant":
-            # Just call render_details, which now handles the feedback + copy popover together
             render_details(m["details"], i, latest=(i == last and not query))
 
 if query:
+    # DO NOT reset active_session_index here so we can update the existing session properly!
+
     with st.chat_message("user"):
         show_text(query)
     with st.chat_message("assistant", avatar=AVATAR):
-        body = st.empty()  # the thinking indicator, then the answer in the same slot (same layout as the history)
+        body = st.empty()
         body.markdown(THINKING_HTML, unsafe_allow_html=True)
         started = time.monotonic()
         try:
@@ -366,12 +415,21 @@ if query:
             text = r.text
         except Exception as exc:
             text, details = f"Sorry, something went wrong while processing your question ({exc}).", {"kind": "invalid"}
+        
         time.sleep(max(0.0, THINKING_SECONDS - (time.monotonic() - started)))
+        
+        # --- Smooth, Fading Word-by-Word Animation ---
+        streamed_text = ""
+        words = text.split(" ")
+        for w_idx, word in enumerate(words):
+            streamed_text += word + (" " if w_idx < len(words) - 1 else "")
+            body.markdown(f'<div class="fade-in-text">{streamed_text.replace("$", r"\$")}</div>', unsafe_allow_html=True)
+            time.sleep(0.04)
+
         st.session_state.messages += [{"role": "user", "content": query},
                                       {"role": "assistant", "content": text, "details": details}]
         with body:
             show_text(text)
         render_details(details, len(st.session_state.messages) - 1, latest=True)
     show_memory(memory_note)
-    if query:
-        st.rerun()
+    st.rerun()
