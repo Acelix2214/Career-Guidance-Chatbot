@@ -175,7 +175,7 @@ def render_details(d: dict, index: int, latest: bool) -> None:
                         st.markdown("**Top roles:** " + ", ".join(f"{r} ({p:.0%})" for r, p in d["role_candidates"]))
                     st.markdown("**Top topics:** " + ", ".join(f"{INTENT_NAMES[i]} ({p:.0%})" for i, p in d["intent_candidates"]))
 
-    # --- Feature 2: Quick Feedback Widget (Vanishes & Locks After Vote) ---
+    # --- Feature 2: Quick Feedback & Smooth Copy Popover ---
     feedback_key = f"feedback_{index}"
     if feedback_key not in st.session_state:
         st.session_state[feedback_key] = None
@@ -188,27 +188,34 @@ def render_details(d: dict, index: int, latest: bool) -> None:
                 writer = csv.writer(f)
                 if not file_exists:
                     writer.writerow(["Timestamp", "User_Query", "Normalized_Query", "Rating"])
-                
                 user_q = st.session_state.messages[index - 1]["content"] if index > 0 and index < len(st.session_state.messages) else "N/A"
                 writer.writerow([datetime.now().strftime("%Y-%m-%d %H:%M:%S"), user_q, d.get("normalized_query", ""), rating])
         except Exception as e:
             print(f"Error saving feedback: {e}")
 
-    # Only show buttons if no vote has been cast yet for this specific message
-    if st.session_state[feedback_key] is None:
-        col_fb1, col_fb2, col_fb3 = st.columns([0.1, 0.1, 0.8])
-        with col_fb1:
+    # Columns: Thumbs Up, Thumbs Down, Copy Popover, Status Text / Spacer
+    col_fb1, col_fb2, col_copy, col_fb3 = st.columns([0.1, 0.1, 0.22, 0.58], vertical_alignment="center")
+    with col_fb1:
+        if st.session_state[feedback_key] is None:
             if st.button("👍", key=f"thumbs_up_{index}", help="Helpful"):
                 save_feedback("helpful")
                 st.rerun()
-        with col_fb2:
+        else:
+            st.markdown(":material/thumb_up:" if st.session_state[feedback_key] == "helpful" else ":material/thumb_down:")
+    with col_fb2:
+        if st.session_state[feedback_key] is None:
             if st.button("👎", key=f"thumbs_down_{index}", help="Not helpful"):
                 save_feedback("not_helpful")
                 st.rerun()
-    else:
-        # Once voted, display a clean static confirmation message instead of the buttons
-        vote_text = "Thanks! Logged as helpful." if st.session_state[feedback_key] == "helpful" else "Thanks! Logged for improvement."
-        st.caption(f":material/check_circle: {vote_text}")
+    with col_copy:
+        with st.popover("Copy"):
+            st.caption("Click icon to copy:")
+            msg_content = st.session_state.messages[index]["content"] if index < len(st.session_state.messages) else ""
+            st.code(msg_content, language="")
+    with col_fb3:
+        if st.session_state[feedback_key] is not None:
+            v_text = "Logged as helpful." if st.session_state[feedback_key] == "helpful" else "Logged for improvement."
+            st.caption(f":material/check_circle: {v_text}")
 
     actions = st.empty()  # always drawn, so the old buttons vanish as soon as a new question arrives
     if not latest:
@@ -249,24 +256,26 @@ with st.sidebar:
     st.caption(f"Career-guidance assistant for {n_roles} careers")
     st.button("New chat", icon=":material/edit_square:", width="stretch", on_click=clear, key="new_chat_btn")
     
-    # --- Feature 1: Export Chat History ---
-    # --- Feature 1: Export Chat History (Disabled when empty) ---
-    chat_export = ""
-    has_messages = bool(st.session_state.get("messages"))
+    # --- Feature 1 & 4: Structured Career Report & Chat Export ---
+    st.divider()
+    st.subheader("📄 Report Generator")
     
-    if has_messages:
+    report_content = "=== CAREER GUIDANCE ASSISTANT - SESSION REPORT ===\n\n"
+    if st.session_state.get("messages"):
         for m in st.session_state.messages:
             role = "User" if m["role"] == "user" else "Assistant"
-            chat_export += f"{role}: {m['content']}\n\n"
+            report_content += f"[{role}]: {m['content']}\n\n"
+    else:
+        report_content += "No session history recorded yet."
 
     st.download_button(
-        label="Export Chat History",
-        data=chat_export if has_messages else "",
-        file_name="career_guidance_chat_history.txt",
+        label="Download Career Report (.txt)",
+        data=report_content,
+        file_name="career_guidance_session_report.txt",
         mime="text/plain",
-        icon=":material/download:",
-        key="export_chat_btn",
-        disabled=not has_messages
+        icon=":material/description:",
+        key="export_report_btn",
+        disabled=not bool(st.session_state.get("messages"))
     )
 
     memory_note = st.empty()  # refreshed at the end, once this turn's answer has updated the memory
@@ -287,27 +296,22 @@ with st.sidebar:
         real = meta.get("realistic_accuracy", {})
         if "ALL (64 questions)" in real:
             st.markdown(f"- Realistic questions handled correctly: **{real['ALL (64 questions)']:.0%}**")
+    
     # --- Feature 3: Dynamic Local Philippine Salary & Tech Context (Covers all 54 Careers) ---
     with st.expander("🇵🇭 PH Salary & Tech Context", icon=":material/payments:"):
         st.markdown("Localized market estimates for the Philippines (PHP/month):")
         
-        # Dynamically fetch all unique roles from the trained bot's knowledge base
         all_kb_roles = sorted(bot.kb_["role"].unique().tolist())
         selected_ph_role = st.selectbox("Select role for local rates:", all_kb_roles, key="ph_role_select")
         
-        # Intelligent baseline scaler for Philippine IT/Tech market tiers
         def get_ph_salary_estimate(role_name: str):
             lower_name = role_name.lower()
-            # Premium tech tiers (AI, ML, Cloud, Data, Security)
             if any(k in lower_name for k in ["ai", "machine learning", "cloud", "security", "sre", "data scientist"]):
                 return {"entry": "₱40,000 - ₱65,000", "mid": "₱75,000 - ₱120,000", "senior": "₱130,000 - ₱200,000+"}
-            # Engineering & Core Development tiers
             elif any(k in lower_name for k in ["software", "developer", "engineer", "architect", "devops"]):
                 return {"entry": "₱28,000 - ₱45,000", "mid": "₱55,000 - ₱95,000", "senior": "₱110,000 - ₱160,000+"}
-            # Analyst & Specialist tiers
             elif any(k in lower_name for k in ["analyst", "scientist", "specialist", "scrum", "product"]):
                 return {"entry": "₱24,000 - ₱40,000", "mid": "₱48,000 - ₱85,000", "senior": "₱95,000 - ₱140,000+"}
-            # General / Junior / Entry-leaning administrative or management tiers
             else:
                 return {"entry": "₱20,000 - ₱32,000", "mid": "₱38,000 - ₱65,000", "senior": "₱75,000 - ₱110,000+"}
 
@@ -318,6 +322,7 @@ with st.sidebar:
         * **Senior-Level:** {r_data['senior']}
         """)
         st.caption("Values reflect standard Philippine IT industry averages (BGC, Ortigas, Cebu, and Remote).")
+
     with st.expander(f"Careers covered ({n_roles})", icon=":material/work:"):
         st.write(", ".join(sorted(bot.kb_["role"].unique())))
     with st.expander("Topics", icon=":material/topic:"):
@@ -331,11 +336,13 @@ if not st.session_state.messages and not query:
     render_welcome(n_roles)
 
 last = len(st.session_state.messages) - 1
+
 for i, m in enumerate(st.session_state.messages):
     with st.chat_message(m["role"], avatar=AVATAR if m["role"] == "assistant" else None):
         show_text(m["content"])
         if m["role"] == "assistant":
-            render_details(m["details"], i, latest=(i == last and not query))  # a new question hides the old buttons
+            # Just call render_details, which now handles the feedback + copy popover together
+            render_details(m["details"], i, latest=(i == last and not query))
 
 if query:
     with st.chat_message("user"):
@@ -360,7 +367,6 @@ if query:
         except Exception as exc:
             text, details = f"Sorry, something went wrong while processing your question ({exc}).", {"kind": "invalid"}
         time.sleep(max(0.0, THINKING_SECONDS - (time.monotonic() - started)))
-        time.sleep(max(0.0, THINKING_SECONDS - (time.monotonic() - started)))
         st.session_state.messages += [{"role": "user", "content": query},
                                       {"role": "assistant", "content": text, "details": details}]
         with body:
@@ -368,4 +374,4 @@ if query:
         render_details(details, len(st.session_state.messages) - 1, latest=True)
     show_memory(memory_note)
     if query:
-        st.rerun() # Or st.rerun() depending on typo check
+        st.rerun()
